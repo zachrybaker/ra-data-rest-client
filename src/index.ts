@@ -40,8 +40,7 @@ const _reKeyResponse = (json: any, key: string) => {
   if (key === null) {
     return json;
   } else if (Array.isArray(json)) {
-    return;
-    json.map((x) => {
+    return json.map((x) => {
       x.id = x[key];
       delete x[key];
       return x;
@@ -67,7 +66,19 @@ const _reKeyPayload = (data: any, reParam: string) => {
   }
   return reData;
 };
-
+const _reKeyFilter = (filter: any, reParam: string) => {
+  var reFilter =
+    filter === null
+      ? null
+      : {
+          ...filter,
+        };
+  if (reParam !== null && reFilter !== null && "id" in reFilter) {
+    reFilter[reParam] = filter.id;
+    delete reFilter.id;
+  }
+  return reFilter;
+};
 export default (
   apiUrl: string,
   keysByResource: any = {} /* ex: {'posts':'key',...} */,
@@ -80,21 +91,10 @@ export default (
       resource in keysByResource ? keysByResource[resource] : null;
     const { page, perPage } = params.pagination;
     let { field, order } = params.sort;
-    let reFilter =
-      params.filter === null
-        ? null
-        : {
-            ...params.filter,
-          };
+    const reFilter = _reKeyFilter(params.filter, reParam);
 
-    if (reParam != null) {
-      if (field === "id") {
-        field = reParam;
-      }
-      if (reFilter !== null && "id" in reFilter) {
-        reFilter[reParam] = params.filter.id;
-        delete reFilter.id;
-      }
+    if (reParam != null && field === "id") {
+      field = reParam;
     }
 
     const rangeStart = (page - 1) * perPage;
@@ -162,21 +162,10 @@ export default (
       resource in keysByResource ? keysByResource[resource] : null;
     const { page, perPage } = params.pagination;
     var { field, order } = params.sort;
-    let reFilter =
-      params.filter === null
-        ? null
-        : {
-            ...params.filter,
-          };
+    const reFilter = _reKeyFilter(params.filter, reParam);
 
-    if (reParam != null) {
-      if (field === "id") {
-        field = reParam;
-      }
-      if (reFilter !== null && "id" in reFilter) {
-        reFilter[reParam] = params.filter.id;
-        delete reFilter.id;
-      }
+    if (reParam != null && field === "id") {
+      field = reParam;
     }
     const rangeStart = (page - 1) * perPage;
     const rangeEnd = page * perPage - 1;
