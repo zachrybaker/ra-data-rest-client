@@ -3,7 +3,7 @@ import { fetchUtils, DataProvider } from "ra-core";
 
 /**
  * Based on https://github.com/marmelab/react-admin/master/packages/ra-data-simple-rest
- * but extended to support non-'id' identifier names.
+ * but extended to support non-'id' identifier names, as well as a response trasform function
  *
  * Maps react-admin queries to a simple REST API
  *
@@ -29,7 +29,16 @@ import { fetchUtils, DataProvider } from "ra-core";
  * import { PostList } from './posts';
  *
  * const App = () => (
- *     <Admin dataProvider={restProvider('http://path.to.my.api/', {'posts':'key'})}>
+ *     <Admin dataProvider={restProvider('http://path.to.my.api/',
+ *       {'posts':'key'}, // your id remapping
+ *       {
+ *          'posts': (o) => {
+ *            // gives posts new property based on other properties....
+ *            o.c = o.a + o.b;
+ *            return o;
+ *          }
+ *        }
+ *     )}>
  *         <Resource name="posts" list={PostList} />
  *     </Admin>
  * );
@@ -53,39 +62,48 @@ const _reKeyResponse = (json: any, key: string) => {
     console.error("undhandled scenario of _reKeyResponse", key, json);
   }
 };
-const _reKeyPayload = (data: any, reParam: string) => {
-  var reData =
-    reParam === null
-      ? data
-      : {
-          ...data,
-        };
-  if (reParam !== null) {
-    reData[reParam] = reData.id;
-    delete reData.id;
+const _xFormResponse = (json: any, xFormFn: any) => {
+  if (!xFormFn) {
+    return json;
   }
-  return reData;
+  if (json === null) {
+    return json;
+  } else if (Array.isArray(json)) {
+    return json.map(xFormFn);
+  } else {
+    return xFormFn(json);
+  }
+};
+const _reKeyPayload = (data: any, reParam: string) => {
+  if (reParam === null) {
+    return data;
+  }
+
+  var { id, ...others } = data;
+
+  others[reParam] = data.id;
+  return others;
 };
 const _reKeyFilter = (filter: any, reParam: string) => {
-  var reFilter =
-    filter === null
-      ? null
-      : {
-          ...filter,
-        };
-  if (reParam !== null && reFilter !== null && "id" in reFilter) {
-    reFilter[reParam] = filter.id;
-    delete reFilter.id;
+  if (filter === null) {
+    return null;
+  }
+  var { id, ...reFilter } = filter;
+
+  if (reParam !== null && id) {
+    reFilter[reParam] = id;
   }
   return reFilter;
 };
 export default (
   apiUrl: string,
   keysByResource: any = {} /* ex: {'posts':'key',...} */,
+  responseTransformsByResource: any = {},
   httpClient = fetchUtils.fetchJson,
   countHeader: string = "Content-Range"
 ): DataProvider => ({
   keysByResource: keysByResource,
+  xFormBy: responseTransformsByResource,
   getList: (resource, params) => {
     const reParam =
       resource in keysByResource ? keysByResource[resource] : null;
@@ -123,7 +141,10 @@ export default (
         );
       }
       return {
-        data: _reKeyResponse(json, reParam),
+        data: _xFormResponse(
+          _reKeyResponse(json, reParam),
+          responseTransformsByResource[resource]
+        ),
         total:
           countHeader === "Content-Range"
             ? parseInt(headers.get("content-range").split("/").pop(), 10)
@@ -138,7 +159,10 @@ export default (
 
     return httpClient(`${apiUrl}/${resource}/${params.id}`).then(
       ({ json }) => ({
-        data: _reKeyResponse(json, reParam),
+        data: _xFormResponse(
+          _reKeyResponse(json, reParam),
+          responseTransformsByResource[resource]
+        ),
       })
     );
   },
@@ -153,7 +177,10 @@ export default (
     };
     const url = `${apiUrl}/${resource}?${stringify(query)}`;
     return httpClient(url).then(({ json }) => ({
-      data: _reKeyResponse(json, reParam),
+      data: _xFormResponse(
+        _reKeyResponse(json, reParam),
+        responseTransformsByResource[resource]
+      ),
     }));
   },
 
@@ -196,7 +223,10 @@ export default (
         );
       }
       return {
-        data: _reKeyResponse(json, reParam),
+        data: _xFormResponse(
+          _reKeyResponse(json, reParam),
+          responseTransformsByResource[resource]
+        ),
         total:
           countHeader === "Content-Range"
             ? parseInt(headers.get("content-range").split("/").pop(), 10)
@@ -212,7 +242,12 @@ export default (
     return httpClient(`${apiUrl}/${resource}/${params.id}`, {
       method: "PUT",
       body: JSON.stringify(reData),
-    }).then(({ json }) => ({ data: _reKeyResponse(json, reParam) }));
+    }).then(({ json }) => ({
+      data: _xFormResponse(
+        _reKeyResponse(json, reParam),
+        responseTransformsByResource[resource]
+      ),
+    }));
   },
 
   // simple-rest doesn't handle provide an updateMany route, so we fallback to calling update n times instead
@@ -249,7 +284,12 @@ export default (
       resource in keysByResource ? keysByResource[resource] : null;
     return httpClient(`${apiUrl}/${resource}/${params.id}`, {
       method: "DELETE",
-    }).then(({ json }) => ({ data: _reKeyResponse(json, reParam) }));
+    }).then(({ json }) => ({
+      data: _xFormResponse(
+        _reKeyResponse(json, reParam),
+        responseTransformsByResource[resource]
+      ),
+    }));
   },
 
   // simple-rest doesn't handle filters on DELETE route, so we fallback to calling DELETE n times instead
