@@ -1,6 +1,8 @@
 # ra-data-rest-client
 
-Extends [marmelab/ra-data-simple-rest](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest) with the abilty to work with data objects that do not use 'id' as their unique identifier property name.
+Extends [marmelab/ra-data-simple-rest](https://github.com/marmelab/react-admin/tree/master/packages/ra-data-simple-rest) with
+the abilty to work with resources that do not use 'id' as their unique identifier property name on the server side, and
+the ability to add a response transform function to a resource.
 
 ## Why another rest client?
 
@@ -9,6 +11,8 @@ Extends [marmelab/ra-data-simple-rest](https://github.com/marmelab/react-admin/t
 But what if your server side doesn't conform to this, and the time/cost of making it appear as if it does is expensive?
 
 Enter this extension. It will allow you to pass a propertyBag to the constructor specifying any resource names and their identifier property name for types that do not use 'id' as their property name.
+
+Secondly, if you would like to manipulate the shape of your resources at the HTTP to app interface, as opposed to a Redux action or manipulating on the server side for the sake of the UI, there is a means to do this as well.
 
 ## Installation
 
@@ -56,9 +60,17 @@ import { PostList } from './posts';
 
 const App = () => (
     <Admin dataProvider={restDataProvider('http://path.to.my.api/', {
-      /* resourcePropertyName: identifierParameterName */
-      "TestKVP": "key",
-      "TestUser": "userId",...
+      /* resource: identifierParameterName */
+      "testKVP": "key",
+      "testUser": "userId",...
+    },
+    {
+      /* resource: modifier function */
+      "department": (d) => {
+        // gives department resource a friendlier name that combines a few properties, for the sake of a SelectInput...
+        d.NicerName = d.GroupName + " - " + d.SubName;
+        return d;
+      }
     })}>
         <Resource name="posts" list={PostList} />
     </Admin>
