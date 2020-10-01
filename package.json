@@ -9,7 +9,7 @@
     "ra-core": "^3.8.5"
   },
   "deprecated": false,
-  "description": "Extends ra-data-simple-rest with the abilty to work with data objects that do not use 'id' as their unique identifier property name.",
+  "description": "Extends ra-data-simple-rest with the abilty to work with resources that do not use 'id' as their unique identifier property name.",
   "devDependencies": {
     "@types/jest": "^26.0.14",
     "@types/react": "^16.9.49",
@@ -61,5 +61,5 @@
     "watch": "tsc --outDir esm --module es2015 --watch"
   },
   "sideEffects": false,
-  "version": "1.0.1"
+  "version": "1.1.1"
 }
